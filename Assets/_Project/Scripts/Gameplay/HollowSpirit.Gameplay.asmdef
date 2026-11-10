@@ -1,0 +1,13 @@
+{
+  "name": "HollowSpirit.Gameplay",
+  "rootNamespace": "HollowSpirit.Gameplay",
+  "references": ["HollowSpirit.Core", "Unity.InputSystem", "Unity.Cinemachine"],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

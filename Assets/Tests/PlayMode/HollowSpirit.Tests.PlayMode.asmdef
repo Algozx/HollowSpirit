@@ -1,0 +1,14 @@
+{
+  "name": "HollowSpirit.Tests.PlayMode",
+  "rootNamespace": "HollowSpirit.Tests.PlayMode",
+  "references": ["HollowSpirit.Core", "HollowSpirit.Gameplay", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": ["nunit.framework.dll"],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

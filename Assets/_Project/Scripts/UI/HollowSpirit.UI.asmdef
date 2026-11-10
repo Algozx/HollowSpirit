@@ -1,0 +1,13 @@
+{
+  "name": "HollowSpirit.UI",
+  "rootNamespace": "HollowSpirit.UI",
+  "references": ["HollowSpirit.Core", "HollowSpirit.Gameplay", "Unity.TextMeshPro", "UnityEngine.UI"],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
