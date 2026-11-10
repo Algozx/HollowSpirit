@@ -32,3 +32,7 @@ sysinfo.txt
 .vs/
 .vscode/
 .idea/
+
+# Asset Store packages (Unity Asset Store EULA: not redistributable). Import them from the Package Manager.
+/[Aa]ssets/ExplosiveLLC/
+/[Aa]ssets/ExplosiveLLC.meta
