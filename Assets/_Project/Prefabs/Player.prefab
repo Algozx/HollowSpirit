@@ -228,6 +228,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
+    - target: {fileID: 100050, guid: e57e9b8cd5e115f4f8d7736473e5c7fd, type: 3}
+      propertyPath: m_Layer
+      value: 9
+      objectReference: {fileID: 0}
     - target: {fileID: 400032, guid: e57e9b8cd5e115f4f8d7736473e5c7fd, type: 3}
       propertyPath: m_LocalRotation.w
       value: 0.7071069
@@ -362,6 +366,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 58d332c0c931df945b80d4f96e418c1e, type: 2}
   weaponHitbox: {fileID: 4799831886601311153}
   inputTuning: {fileID: 11400000, guid: 2fe017ebbe73f2f4eb3d74aeba9ba3d3, type: 2}
+  lockOnTuning: {fileID: 11400000, guid: a227c8e727a689c47ab0eb4faf90ea69, type: 2}
+  moveAction: {fileID: 7723093844229559393, guid: a54a15690aa4448fa1116a4277433acd, type: 3}
+  rollAction: {fileID: 4107832871642467151, guid: a54a15690aa4448fa1116a4277433acd, type: 3}
+  attackAction: {fileID: -4850437866639814045, guid: a54a15690aa4448fa1116a4277433acd, type: 3}
+  lockOnAction: {fileID: -7348635160181649274, guid: a54a15690aa4448fa1116a4277433acd, type: 3}
   cameraTransform: {fileID: 0}
 --- !u!4 &3190745384342101632 stripped
 Transform:
