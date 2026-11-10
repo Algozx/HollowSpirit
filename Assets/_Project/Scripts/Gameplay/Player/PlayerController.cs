@@ -8,13 +8,18 @@ namespace HollowSpirit.Gameplay.Player
 {
     /// <summary>Reads input, drives the action state machine and Animator, and moves the character with root motion.</summary>
     [RequireComponent(typeof(CharacterController), typeof(Animator))]
-    public sealed class PlayerController : MonoBehaviour, IActionWindowReceiver
+    public sealed class PlayerController : MonoBehaviour, IActionWindowReceiver, IDamageable
     {
         private static readonly int SpeedHash = Animator.StringToHash("Speed");
         private static readonly int RollHash = Animator.StringToHash("Roll");
+        private static readonly int AttackHash = Animator.StringToHash("Attack");
+        private static readonly int AttackIndexHash = Animator.StringToHash("AttackIndex");
 
         [SerializeField] private CharacterStats stats;
         [SerializeField] private RollData rollData;
+        [Tooltip("Light attack chain in order; after the last one the chain starts over.")]
+        [SerializeField] private AttackData[] lightAttacks;
+        [SerializeField] private WeaponHitbox weaponHitbox;
         [SerializeField] private InputTuning inputTuning;
         [Tooltip("Camera used for camera-relative movement. Falls back to the main camera.")]
         [SerializeField] private Transform cameraTransform;
@@ -27,18 +32,28 @@ namespace HollowSpirit.Gameplay.Player
         private Vector3 moveDirection;
 
         public Stamina Stamina { get; private set; }
+        public Health Health { get; private set; }
         public PlayerActionStateMachine Actions { get; private set; }
         public bool IsInvulnerable => Actions.IsInvulnerable;
 
         private void Awake()
         {
+            if (!HasRequiredReferences())
+            {
+                Debug.LogError($"{nameof(PlayerController)}: stats, roll, input tuning, weapon hitbox or light attacks are missing on {name}.", this);
+                enabled = false;
+                return;
+            }
+
             animator = GetComponent<Animator>();
             characterController = GetComponent<CharacterController>();
             input = new HollowSpiritInput();
             buffer = new InputBuffer(inputTuning.bufferWindowSeconds);
             Stamina = new Stamina(stats.maxStamina, stats.staminaRegenPerSecond, stats.staminaRegenDelaySeconds);
-            Actions = new PlayerActionStateMachine(buffer, Stamina, rollData);
+            Health = new Health(stats.maxHealth);
+            Actions = new PlayerActionStateMachine(buffer, Stamina, rollData, lightAttacks, Health);
             Actions.RollStarted += HandleRollStarted;
+            Actions.AttackStarted += HandleAttackStarted;
 
             if (cameraTransform == null && Camera.main != null)
             {
@@ -46,14 +61,32 @@ namespace HollowSpirit.Gameplay.Player
             }
         }
 
+        private bool HasRequiredReferences()
+        {
+            if (stats == null || rollData == null || inputTuning == null || weaponHitbox == null || lightAttacks == null || lightAttacks.Length == 0)
+            {
+                return false;
+            }
+
+            foreach (AttackData attack in lightAttacks)
+            {
+                if (attack == null)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         private void OnEnable()
         {
-            input.Gameplay.Enable();
+            input?.Gameplay.Enable();
         }
 
         private void OnDisable()
         {
-            input.Gameplay.Disable();
+            input?.Gameplay.Disable();
         }
 
         private void OnDestroy()
@@ -61,6 +94,7 @@ namespace HollowSpirit.Gameplay.Player
             if (Actions != null)
             {
                 Actions.RollStarted -= HandleRollStarted;
+                Actions.AttackStarted -= HandleAttackStarted;
             }
 
             input?.Dispose();
@@ -74,6 +108,11 @@ namespace HollowSpirit.Gameplay.Player
             if (input.Gameplay.Roll.WasPressedThisFrame())
             {
                 buffer.Press(BufferedAction.Roll, time);
+            }
+
+            if (input.Gameplay.Attack.WasPressedThisFrame())
+            {
+                buffer.Press(BufferedAction.Attack, time);
             }
 
             Stamina.Tick(deltaTime, time);
@@ -111,19 +150,47 @@ namespace HollowSpirit.Gameplay.Player
             characterController.Move(delta);
         }
 
-        public void OnActionWindowOpened(ActionWindowKind kind)
+        public int OnActionStateEntered()
         {
-            Actions.OpenWindow(kind);
+            return Actions.BeginAction();
         }
 
-        public void OnActionWindowClosed(ActionWindowKind kind)
+        public void OnActionWindowOpened(ActionWindowKind kind, int actionToken)
         {
-            Actions.CloseWindow(kind);
+            bool accepted = Actions.OpenWindow(kind, actionToken);
+            if (accepted && kind == ActionWindowKind.Damage && Actions.CurrentAttack != null)
+            {
+                weaponHitbox.BeginSwing(Actions.CurrentAttack.damage, gameObject);
+            }
         }
 
-        public void OnActionStateExited()
+        public void OnActionWindowClosed(ActionWindowKind kind, int actionToken)
         {
-            Actions.NotifyActionFinished();
+            bool accepted = Actions.CloseWindow(kind, actionToken);
+            if (accepted && kind == ActionWindowKind.Damage)
+            {
+                weaponHitbox.EndSwing();
+            }
+        }
+
+        public void OnActionStateExited(int actionToken)
+        {
+            Actions.NotifyActionFinished(actionToken);
+            if (Actions.State == PlayerActionState.Move)
+            {
+                animator.ResetTrigger(AttackHash);
+                animator.ResetTrigger(RollHash);
+            }
+        }
+
+        public bool TryTakeHit(in HitInfo hit)
+        {
+            return Actions.TryTakeHit(hit);
+        }
+
+        /// <summary>Hit animation event shipped inside the attack clips; damage follows the damage window, not this event.</summary>
+        public void Hit()
+        {
         }
 
         /// <summary>Footstep animation event shipped inside the locomotion clips; audio hooks in later.</summary>
@@ -143,7 +210,19 @@ namespace HollowSpirit.Gameplay.Player
                 transform.rotation = Quaternion.LookRotation(moveDirection, Vector3.up);
             }
 
+            animator.ResetTrigger(AttackHash);
             animator.SetTrigger(RollHash);
+        }
+
+        private void HandleAttackStarted(AttackData attack, int chainIndex)
+        {
+            if (moveDirection.sqrMagnitude > 0.0001f)
+            {
+                transform.rotation = Quaternion.LookRotation(moveDirection, Vector3.up);
+            }
+
+            animator.SetInteger(AttackIndexHash, chainIndex);
+            animator.SetTrigger(AttackHash);
         }
 
         private Vector3 ToCameraRelative(Vector2 stick)

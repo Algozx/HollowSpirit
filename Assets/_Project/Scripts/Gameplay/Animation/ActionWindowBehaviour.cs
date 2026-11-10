@@ -11,18 +11,22 @@ namespace HollowSpirit.Gameplay.Animation
 
         private IActionWindowReceiver receiver;
         private IActionWindowSource source;
-        private bool windowOpen;
+        private WindowPhase phase;
+        private int actionToken;
 
         public override void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
         {
             receiver = animator.GetComponent<IActionWindowReceiver>();
             source = windowSource as IActionWindowSource;
-            windowOpen = false;
+            phase = WindowPhase.Waiting;
 
             if (receiver == null || source == null)
             {
                 Debug.LogError($"{nameof(ActionWindowBehaviour)}: missing receiver or window source on {animator.name}.", animator);
+                return;
             }
+
+            actionToken = receiver.OnActionStateEntered();
         }
 
         public override void OnStateUpdate(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
@@ -32,20 +36,16 @@ namespace HollowSpirit.Gameplay.Animation
                 return;
             }
 
-            bool shouldBeOpen = IsOpen(stateInfo.normalizedTime * stateInfo.length, source);
-            if (shouldBeOpen == windowOpen)
+            WindowStep step = Advance(phase, stateInfo.normalizedTime * stateInfo.length, source);
+            phase = step.Phase;
+            if (step.Opened)
             {
-                return;
+                receiver.OnActionWindowOpened(kind, actionToken);
             }
 
-            windowOpen = shouldBeOpen;
-            if (windowOpen)
+            if (step.Closed)
             {
-                receiver.OnActionWindowOpened(kind);
-            }
-            else
-            {
-                receiver.OnActionWindowClosed(kind);
+                receiver.OnActionWindowClosed(kind, actionToken);
             }
         }
 
@@ -55,20 +55,43 @@ namespace HollowSpirit.Gameplay.Animation
             return seconds >= source.WindowStartSeconds && seconds < source.WindowEndSeconds;
         }
 
+        /// <summary>Moves the window forward to <paramref name="seconds"/>; a jump over the whole window opens and closes it once.</summary>
+        public static WindowStep Advance(WindowPhase phase, float seconds, IActionWindowSource source)
+        {
+            switch (phase)
+            {
+                case WindowPhase.Waiting:
+                    if (seconds < source.WindowStartSeconds)
+                    {
+                        return new WindowStep(WindowPhase.Waiting, false, false);
+                    }
+
+                    return seconds < source.WindowEndSeconds
+                        ? new WindowStep(WindowPhase.Open, true, false)
+                        : new WindowStep(WindowPhase.Done, true, true);
+                case WindowPhase.Open:
+                    return seconds < source.WindowEndSeconds
+                        ? new WindowStep(WindowPhase.Open, false, false)
+                        : new WindowStep(WindowPhase.Done, false, true);
+                default:
+                    return new WindowStep(WindowPhase.Done, false, false);
+            }
+        }
+
         public override void OnStateExit(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
         {
-            if (receiver == null)
+            if (receiver == null || source == null)
             {
                 return;
             }
 
-            if (windowOpen)
+            if (phase == WindowPhase.Open)
             {
-                windowOpen = false;
-                receiver.OnActionWindowClosed(kind);
+                receiver.OnActionWindowClosed(kind, actionToken);
             }
 
-            receiver.OnActionStateExited();
+            phase = WindowPhase.Done;
+            receiver.OnActionStateExited(actionToken);
         }
     }
 }
