@@ -36,3 +36,9 @@ sysinfo.txt
 # Asset Store packages (Unity Asset Store EULA: not redistributable). Import them from the Package Manager.
 /[Aa]ssets/ExplosiveLLC/
 /[Aa]ssets/ExplosiveLLC.meta
+/[Aa]ssets/DoubleL/
+/[Aa]ssets/DoubleL.meta
+/[Aa]ssets/DungeonCharacters/
+/[Aa]ssets/DungeonCharacters.meta
+/[Aa]ssets/GUI_Parts/
+/[Aa]ssets/GUI_Parts.meta
