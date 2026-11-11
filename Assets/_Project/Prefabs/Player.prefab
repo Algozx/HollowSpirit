@@ -232,6 +232,10 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 9
       objectReference: {fileID: 0}
+    - target: {fileID: 100050, guid: e57e9b8cd5e115f4f8d7736473e5c7fd, type: 3}
+      propertyPath: m_TagString
+      value: Player
+      objectReference: {fileID: 0}
     - target: {fileID: 400032, guid: e57e9b8cd5e115f4f8d7736473e5c7fd, type: 3}
       propertyPath: m_LocalRotation.w
       value: 0.7071069

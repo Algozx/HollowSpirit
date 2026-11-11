@@ -8,9 +8,9 @@ using HollowSpirit.Gameplay.Data;
 namespace HollowSpirit.Gameplay.Player
 {
     /// <summary>Top-level player actions.</summary>
-    public enum PlayerActionState { Move, Roll, Attack, Stagger }
+    public enum PlayerActionState { Move, Roll, Attack, Stagger, Dead }
 
-    /// <summary>Decides which action the player is in; rolls and attacks are committed until their animation ends or is cancelled.</summary>
+    /// <summary>Decides which action the player is in; rolls, attacks and staggers are committed until their animation ends or is cancelled.</summary>
     public sealed class PlayerActionStateMachine : IDamageable
     {
         private readonly InputBuffer buffer;
@@ -38,6 +38,8 @@ namespace HollowSpirit.Gameplay.Player
 
         public event Action RollStarted;
         public event Action<AttackData, int> AttackStarted;
+        public event Action StaggerStarted;
+        public event Action Died;
 
         /// <summary>Call every frame; starts buffered actions when the player is free to act.</summary>
         public void Update(float time)
@@ -58,16 +60,43 @@ namespace HollowSpirit.Gameplay.Player
             }
         }
 
-        /// <summary>The player is hit; ignored while dead or invulnerable.</summary>
+        /// <summary>The player is hit; ignored while dead or invulnerable. A hit interrupts the current action.</summary>
         public bool TryTakeHit(in HitInfo hit)
         {
-            if (health.IsDead || IsInvulnerable)
+            if (State == PlayerActionState.Dead || health.IsDead || IsInvulnerable)
             {
                 return false;
             }
 
             health.TakeDamage(hit.Damage);
+            buffer.Clear();
+            if (health.IsDead)
+            {
+                InterruptCurrentAction();
+                State = PlayerActionState.Dead;
+                Died?.Invoke();
+                return true;
+            }
+
+            // A hit while already staggered only deals damage; the flinch is committed until it ends.
+            if (State != PlayerActionState.Stagger)
+            {
+                InterruptCurrentAction();
+                State = PlayerActionState.Stagger;
+                StaggerStarted?.Invoke();
+            }
+
             return true;
+        }
+
+        /// <summary>Back on their feet with full health and stamina, ready to act.</summary>
+        public void Respawn()
+        {
+            health.Restore();
+            stamina.Restore();
+            buffer.Clear();
+            InterruptCurrentAction();
+            State = PlayerActionState.Move;
         }
 
         /// <summary>An action animation state started; returns the token its later calls must carry.</summary>
@@ -117,7 +146,7 @@ namespace HollowSpirit.Gameplay.Player
         /// <summary>The action animation reported that it finished; calls from an older action are ignored.</summary>
         public void NotifyActionFinished(int actionToken)
         {
-            if (actionToken != currentToken)
+            if (actionToken != currentToken || State == PlayerActionState.Dead)
             {
                 return;
             }
@@ -165,6 +194,14 @@ namespace HollowSpirit.Gameplay.Player
         {
             currentToken = 0;
             IsInvulnerable = false;
+        }
+
+        private void InterruptCurrentAction()
+        {
+            InvalidateCurrentAction();
+            CurrentAttack = null;
+            nextAttackIndex = 0;
+            damageWindowEnded = false;
         }
     }
 }

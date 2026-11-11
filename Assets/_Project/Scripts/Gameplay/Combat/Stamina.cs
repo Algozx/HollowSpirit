@@ -32,6 +32,13 @@ namespace HollowSpirit.Gameplay.Combat
             Changed?.Invoke();
         }
 
+        /// <summary>Back to a full pool.</summary>
+        public void Restore()
+        {
+            Current = Max;
+            Changed?.Invoke();
+        }
+
         public void Tick(float deltaTime, float time)
         {
             if (Current >= Max || time - lastSpendTime < regenDelaySeconds)

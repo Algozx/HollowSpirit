@@ -20,6 +20,8 @@ namespace HollowSpirit.Gameplay.Player
         private static readonly int MoveXHash = Animator.StringToHash("MoveX");
         private static readonly int MoveZHash = Animator.StringToHash("MoveZ");
         private static readonly int LockBlendHash = Animator.StringToHash("LockBlend");
+        private static readonly int StaggerHash = Animator.StringToHash("Stagger");
+        private static readonly int DeadHash = Animator.StringToHash("Dead");
 
         [SerializeField] private CharacterStats stats;
         [SerializeField] private RollData rollData;
@@ -48,9 +50,19 @@ namespace HollowSpirit.Gameplay.Player
         public PlayerActionStateMachine Actions { get; private set; }
         public bool IsInvulnerable => Actions.IsInvulnerable;
         public LockOnTarget LockedTarget { get; private set; }
+        public bool IsDead => Actions != null && Actions.State == PlayerActionState.Dead;
+
+        /// <summary>Centre of the body, where enemies aim and test line of sight.</summary>
+        public Vector3 CenterPoint => characterController.bounds.center;
 
         /// <summary>Raised with the new target when a lock starts, or with null when it ends.</summary>
         public event Action<LockOnTarget> LockedTargetChanged;
+
+        /// <summary>Raised once when health reaches zero.</summary>
+        public event Action Died;
+
+        /// <summary>Raised after the player stood back up with full health and stamina.</summary>
+        public event Action Respawned;
 
         private void Awake()
         {
@@ -69,6 +81,8 @@ namespace HollowSpirit.Gameplay.Player
             Actions = new PlayerActionStateMachine(buffer, Stamina, rollData, lightAttacks, Health);
             Actions.RollStarted += HandleRollStarted;
             Actions.AttackStarted += HandleAttackStarted;
+            Actions.StaggerStarted += HandleStaggerStarted;
+            Actions.Died += HandleDied;
 
             if (cameraTransform == null && Camera.main != null)
             {
@@ -108,6 +122,8 @@ namespace HollowSpirit.Gameplay.Player
             {
                 Actions.RollStarted -= HandleRollStarted;
                 Actions.AttackStarted -= HandleAttackStarted;
+                Actions.StaggerStarted -= HandleStaggerStarted;
+                Actions.Died -= HandleDied;
             }
         }
 
@@ -115,6 +131,11 @@ namespace HollowSpirit.Gameplay.Player
         {
             float time = Time.time;
             float deltaTime = Time.deltaTime;
+
+            if (IsDead)
+            {
+                return;
+            }
 
             if (rollAction.action.WasPressedThisFrame())
             {
@@ -286,6 +307,42 @@ namespace HollowSpirit.Gameplay.Player
         /// <summary>Footstep animation event shipped inside the locomotion clips; audio hooks in later.</summary>
         public void FootR()
         {
+        }
+
+        /// <summary>Stands the player back up with full health and stamina; the caller places the player first.</summary>
+        public void Respawn()
+        {
+            if (!IsDead)
+            {
+                return;
+            }
+
+            Actions.Respawn();
+            verticalVelocity = 0f;
+            animator.ResetTrigger(StaggerHash);
+            animator.ResetTrigger(AttackHash);
+            animator.ResetTrigger(RollHash);
+            animator.SetBool(DeadHash, false);
+            Respawned?.Invoke();
+        }
+
+        private void HandleStaggerStarted()
+        {
+            weaponHitbox.EndSwing();
+            animator.ResetTrigger(AttackHash);
+            animator.ResetTrigger(RollHash);
+            animator.SetTrigger(StaggerHash);
+        }
+
+        private void HandleDied()
+        {
+            weaponHitbox.EndSwing();
+            ReleaseLock();
+            animator.ResetTrigger(AttackHash);
+            animator.ResetTrigger(RollHash);
+            animator.ResetTrigger(StaggerHash);
+            animator.SetBool(DeadHash, true);
+            Died?.Invoke();
         }
 
         private void HandleRollStarted()

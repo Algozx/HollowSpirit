@@ -31,7 +31,8 @@ namespace HollowSpirit.Gameplay.Combat
 
         public bool TryTakeHit(in HitInfo hit)
         {
-            if (Health == null || Health.IsDead)
+            // Only the player trains on the dummy; enemy swings pass through it.
+            if (Health == null || Health.IsDead || (hit.Attacker != null && !hit.Attacker.CompareTag("Player")))
             {
                 return false;
             }

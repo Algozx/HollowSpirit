@@ -343,6 +343,155 @@ namespace HollowSpirit.Tests.EditMode
             Assert.IsFalse(machine.TryTakeHit(new HitInfo(10f, null, Vector3.zero)));
         }
 
+        private static HitInfo Hit(float damage)
+        {
+            return new HitInfo(damage, null, Vector3.zero);
+        }
+
+        [Test]
+        public void Hit_WhileMoving_StaggersAndDealsDamage_KeepingStamina()
+        {
+            int staggers = 0;
+            machine.StaggerStarted += () => staggers++;
+
+            Assert.IsTrue(machine.TryTakeHit(Hit(22f)));
+
+            Assert.AreEqual(PlayerActionState.Stagger, machine.State);
+            Assert.AreEqual(78f, health.Current, 0.001f);
+            Assert.AreEqual(100f, stamina.Current, 0.001f);
+            Assert.AreEqual(1, staggers);
+        }
+
+        [Test]
+        public void Hit_DuringRollIFrames_IsIgnored()
+        {
+            PressAndUpdate(BufferedAction.Roll, 1f);
+            int token = machine.BeginAction();
+            machine.OpenWindow(ActionWindowKind.Invulnerability, token);
+
+            Assert.IsFalse(machine.TryTakeHit(Hit(22f)));
+
+            Assert.AreEqual(PlayerActionState.Roll, machine.State);
+            Assert.AreEqual(100f, health.Current, 0.001f);
+        }
+
+        [Test]
+        public void Hit_DuringAttack_InterruptsItAndStaggers()
+        {
+            PressAndUpdate(BufferedAction.Attack, 1f);
+            int attackToken = machine.BeginAction();
+            machine.OpenWindow(ActionWindowKind.Damage, attackToken);
+
+            machine.TryTakeHit(Hit(22f));
+
+            Assert.AreEqual(PlayerActionState.Stagger, machine.State);
+            Assert.IsNull(machine.CurrentAttack);
+            Assert.IsFalse(machine.OpenWindow(ActionWindowKind.Damage, attackToken));
+        }
+
+        [Test]
+        public void Hit_ClearsTheInputBuffer()
+        {
+            buffer.Press(BufferedAction.Attack, 1f);
+            machine.TryTakeHit(Hit(22f));
+            machine.NotifyActionFinished(machine.BeginAction());
+
+            machine.Update(1.05f);
+
+            Assert.AreEqual(PlayerActionState.Move, machine.State);
+        }
+
+        [Test]
+        public void StaleExit_FromInterruptedAttack_DoesNotEndStagger()
+        {
+            PressAndUpdate(BufferedAction.Attack, 1f);
+            int attackToken = machine.BeginAction();
+            machine.TryTakeHit(Hit(22f));
+
+            machine.NotifyActionFinished(attackToken);
+            Assert.AreEqual(PlayerActionState.Stagger, machine.State);
+
+            int staggerToken = machine.BeginAction();
+            machine.NotifyActionFinished(attackToken);
+            Assert.AreEqual(PlayerActionState.Stagger, machine.State);
+
+            machine.NotifyActionFinished(staggerToken);
+            Assert.AreEqual(PlayerActionState.Move, machine.State);
+        }
+
+        [Test]
+        public void Stagger_IsCommitted_InputsWaitUntilItEnds()
+        {
+            machine.TryTakeHit(Hit(22f));
+            int staggerToken = machine.BeginAction();
+
+            PressAndUpdate(BufferedAction.Roll, 1f);
+            Assert.AreEqual(PlayerActionState.Stagger, machine.State);
+
+            machine.NotifyActionFinished(staggerToken);
+            Assert.AreEqual(PlayerActionState.Move, machine.State);
+        }
+
+        [Test]
+        public void Hit_WhileStaggered_DealsDamageWithoutRestartingTheFlinch()
+        {
+            int staggers = 0;
+            machine.StaggerStarted += () => staggers++;
+            machine.TryTakeHit(Hit(22f));
+            machine.TryTakeHit(Hit(22f));
+
+            Assert.AreEqual(56f, health.Current, 0.001f);
+            Assert.AreEqual(1, staggers);
+        }
+
+        [Test]
+        public void Health_ReachingZero_MovesToDead_AndIgnoresFurtherHitsAndInputs()
+        {
+            int deaths = 0;
+            machine.Died += () => deaths++;
+
+            Assert.IsTrue(machine.TryTakeHit(Hit(100f)));
+            Assert.AreEqual(PlayerActionState.Dead, machine.State);
+            Assert.AreEqual(1, deaths);
+
+            Assert.IsFalse(machine.TryTakeHit(Hit(10f)));
+            PressAndUpdate(BufferedAction.Roll, 1f);
+            PressAndUpdate(BufferedAction.Attack, 1.1f);
+            machine.NotifyActionFinished(machine.BeginAction());
+
+            Assert.AreEqual(PlayerActionState.Dead, machine.State);
+            Assert.AreEqual(0f, health.Current, 0.001f);
+            Assert.AreEqual(1, deaths);
+        }
+
+        [Test]
+        public void Respawn_RestoresHealthAndStamina_AndReturnsToMove()
+        {
+            stamina.Spend(60f, 0f);
+            machine.TryTakeHit(Hit(100f));
+
+            machine.Respawn();
+
+            Assert.AreEqual(PlayerActionState.Move, machine.State);
+            Assert.AreEqual(100f, health.Current, 0.001f);
+            Assert.AreEqual(100f, stamina.Current, 0.001f);
+            PressAndUpdate(BufferedAction.Roll, 2f);
+            Assert.AreEqual(PlayerActionState.Roll, machine.State);
+        }
+
+        [Test]
+        public void Respawn_AfterDeath_CanDieAgain()
+        {
+            int deaths = 0;
+            machine.Died += () => deaths++;
+            machine.TryTakeHit(Hit(100f));
+            machine.Respawn();
+            machine.TryTakeHit(Hit(100f));
+
+            Assert.AreEqual(2, deaths);
+            Assert.AreEqual(PlayerActionState.Dead, machine.State);
+        }
+
         [Test]
         public void AttackData_ProvidesWindowTimes()
         {

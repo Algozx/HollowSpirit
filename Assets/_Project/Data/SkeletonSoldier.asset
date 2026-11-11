@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc6fda01cedfd8740adbdc894f3f54be, type: 3}
+  m_Name: SkeletonSoldier
+  m_EditorClassIdentifier: HollowSpirit.Gameplay::HollowSpirit.Gameplay.Data.EnemyDefinition
+  maxHealth: 50
+  souls: 30
+  sightRange: 10
+  attackRange: 1.7
+  arrivalToleranceMetres: 0.2
+  attackAimOffsetDegrees: 12
+  attackCooldownMinSeconds: 2
+  attackCooldownMaxSeconds: 3
+  attacks:
+  - {fileID: 11400000, guid: 25894b396c721e94b878880a1cb3afe7, type: 2}

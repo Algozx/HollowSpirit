@@ -1,0 +1,13 @@
+{
+  "name": "HollowSpirit.Editor",
+  "rootNamespace": "HollowSpirit.Editor",
+  "references": [],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
