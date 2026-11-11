@@ -202,6 +202,30 @@ namespace HollowSpirit.Tests.EditMode
         }
 
         [Test]
+        public void Attack_ThreeHitChain_GoesOneTwoThreeOne()
+        {
+            AttackData attack3 = MakeAttack(15f, 20f, 0.3f, 0.5f);
+            var chain = new PlayerActionStateMachine(buffer, stamina, roll, new[] { attack1, attack2, attack3 }, health);
+            AttackData[] expected = { attack1, attack2, attack3, attack1 };
+            float time = 1f;
+
+            for (int i = 0; i < expected.Length; i++)
+            {
+                buffer.Press(BufferedAction.Attack, time);
+                chain.Update(time);
+                Assert.AreSame(expected[i], chain.CurrentAttack, $"swing {i + 1}");
+
+                int token = chain.BeginAction();
+                chain.OpenWindow(ActionWindowKind.Damage, token);
+                chain.CloseWindow(ActionWindowKind.Damage, token);
+                time += 0.5f;
+            }
+
+            Assert.AreEqual(40f, stamina.Current, 0.001f);
+            Object.DestroyImmediate(attack3);
+        }
+
+        [Test]
         public void Attack_ChainResets_AfterReturningToMove()
         {
             PressAndUpdate(BufferedAction.Attack, 1f);
