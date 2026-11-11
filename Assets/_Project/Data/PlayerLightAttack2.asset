@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: HollowSpirit.Gameplay::HollowSpirit.Gameplay.Data.AttackData
   staminaCost: 15
   damage: 20
-  damageStartSeconds: 0.875
-  damageEndSeconds: 0.983
+  damageStartSeconds: 0.417
+  damageEndSeconds: 0.517

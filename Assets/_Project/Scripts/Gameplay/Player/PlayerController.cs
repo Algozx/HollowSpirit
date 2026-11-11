@@ -273,12 +273,17 @@ namespace HollowSpirit.Gameplay.Player
             return Actions.TryTakeHit(hit);
         }
 
-        /// <summary>Footstep animation event shipped inside the roll clip; audio hooks in later.</summary>
+        /// <summary>Hit animation event shipped inside the attack clips; damage follows the damage window, not this event.</summary>
+        public void Hit()
+        {
+        }
+
+        /// <summary>Footstep animation event shipped inside the locomotion clips; audio hooks in later.</summary>
         public void FootL()
         {
         }
 
-        /// <summary>Footstep animation event shipped inside the roll clip; audio hooks in later.</summary>
+        /// <summary>Footstep animation event shipped inside the locomotion clips; audio hooks in later.</summary>
         public void FootR()
         {
         }
